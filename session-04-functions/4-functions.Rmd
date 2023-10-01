@@ -209,6 +209,21 @@ You feel that the variable on emotions in our study dataset is badly represented
 # if happy, then :) 
 # if sad, then :(
 # if neutral, then :|
+
+emotions_to_emoticons <- function(emotion) {
+  if (emotion == "happy") {
+    return(":)")
+  } else if (emotion == "sad") {
+    return(":(")
+  } else if (emotion == "neutral" || emotion == "netural") {
+    return(":|")
+  } else {
+    return("Unknown Emotion")
+  }
+}
+
+study$emoticons <- sapply(study$emotions, emotions_to_emoticons)
+
 ```
 
 
@@ -369,7 +384,17 @@ The function works exactly the same way as the `map*` functions for a single inp
 ##### **Exercise 5:**
 Write a function that returns both the mean and the standard deviation for the numeric variables in our study data.
 ```{r}
-
+mean_sd <- function(x) {
+  if(!is.numeric(x)) {
+    return(NULL)
+  }
+  else {
+    list(
+      "mean" = mean(x, na.rm = TRUE),
+      "sd" = sd(x, na.rm = TRUE)
+    )
+  }
+}
 ```
 
 
@@ -377,7 +402,12 @@ Write a function that returns both the mean and the standard deviation for the n
 ##### **Exercise 6:**
 Iterate over the relevant columns.
 ```{r}
+map(study |> select_if(is.numeric), mean_sd)
 
+map_df(study |>  select(where(is.numeric)), mean_sd) |> 
+  cbind(
+    
+  )
 ```
 
 
