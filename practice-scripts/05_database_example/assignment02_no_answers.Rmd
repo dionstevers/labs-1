@@ -38,7 +38,10 @@ It will be another "in-memory" or local database. The file is in the practice fo
 First create a connection to the database file and ask for the names of the tables.
 
 ```{r}
-
+library(RSQLite)
+library(tidyverse)
+library(DBI)
+con <- DBI::dbConnect(RSQLite::SQLite(), "levant.cameo.sqlite3")
 ```
 
 ## Wrapping things up
@@ -48,7 +51,9 @@ There are three tables of interest (you don't care about anything beginning
 appear as if they were data.frames
 
 ```{r}
-
+event <- tbl(con, "event")
+description <- tbl(con, "description")
+score <- tbl(con, "score")
 ```
 
 ## Scoring the events
@@ -57,7 +62,10 @@ To get conflict scores for events in this period, join the score table to the
 events table with a left join. Hint: think about which table should be left and why.
 
 ```{r}
-
+score_events <- left_join(
+  event, score, by = "code"
+)
+score_events
 ```
 
 ## Second Intifada
@@ -68,13 +76,19 @@ ISO-standard date format) and use them to filter your copy of the events table
 to contain only events in the Second Intifada.
 
 ```{r}
+begin_date <- "2000-09-27"
+end_date <- "2005-02-08"
 
+int_event <- score_events |> 
+  filter(date >= begin_date & date <= end_date)
+
+int_event
 ```
 
 Now `collect` the result so you have it as a regular R data.frame. 
 
 ```{r}
-
+real_int_event <- int_event |>  collect()
 ```
 
 ## Working in R
@@ -87,7 +101,9 @@ letters. This is what conflict scholars call 'the Israel-Palestine dyad'.
 If you prefer, you could instead generate the Palestine-Israel dyad which tracks events done by Palestinian actors to Israeli actors.
 
 ```{r}
-
+pal_isr <- real_int_event |> 
+  filter(str_starts(source, "ISR"),  #alternative: grepl("ISR", source)
+         str_starts(target, "PAL"))  #alternative: grepl("PAL", target)
 ```
 
 ## Time series
@@ -101,13 +117,19 @@ evscore <- mutate(evscore,
 where we have ensured date really is a date  with `as.Date` (sometimes classes get mixed up in and out of databases), and created a nominal variable to represent dates that are in the same week using `cut.Date`. Then we have taken advantage of the fact that this variable is named after the date of the *first* day of the week it represents, so we can turn that into a character (it's a factor label after `cut`), and then back into a proper date.
 
 ```{r}
-
+pal_isr <- mutate(pal_isr, 
+                  week = cut(as.Date(date), breaks = "week"),
+                  week = as.Date(as.character(week)))
+head(pal_isr, 10)
 ```
 
 Lastly, average the score in each week of your dyad and plot the time series of conflict.
 
 ```{r}
-
+pal_isr_weekly <- pal_isr |> 
+  group_by(week) |> 
+  summarise(avg_score = round(mean(score, na.rm=TRUE)))
+head(pal_isr_weekly)
 ```
 
 This is the kind of data and graphic that conflict forecasters use for 
@@ -116,7 +138,9 @@ prediction in governments around the world. And now we can do it too.
 You made it, great! Now just close your connection as you don't need it anymore.
 
 ```{r}
-
+ggplot(pal_isr_weekly, aes(x = week, y = avg_score)) + 
+  geom_point(alpha = 0.5) +
+  geom_smooth(span = 0.1, colour = "black")
 ```
 
 
